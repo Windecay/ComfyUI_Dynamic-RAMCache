@@ -1,4 +1,4 @@
-简体中文 | [English](./README.md)
+[简体中文](./README_zh.md) | English
 
 # ComfyUI Dynamic RAM Cache Control
 
