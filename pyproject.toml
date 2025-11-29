@@ -28,9 +28,9 @@ Documentation = "https://github.com/Windecay/ComfyUI_Dynamic-RAMCache/wiki"
 "Bug Tracker" = "https://github.com/Windecay/ComfyUI_Dynamic-RAMCache/issues"
 
 [tool.comfy]
-PublisherId = ""
+PublisherId = "windecay"
 DisplayName = "ComfyUI_Dynamic-RAMCache"
 Icon = ""
 includes = [] 
-# "requires-comfyui" = ">=1.0.0"  # ComfyUI version compatibility
+# "requires-comfyui" = ">=0.3.68"  # ComfyUI version compatibility
 
