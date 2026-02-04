@@ -77,11 +77,7 @@ class DynamicRAMCacheControl:
 
         target_mode_ram = "RAM_PRESSURE" in mode
 
-        executor = None
-        for obj in gc.get_objects():
-            if obj.__class__.__name__ == 'PromptExecutor':
-                executor = obj
-                break
+        executor = self._find_executor()
         
         if executor is None:
             logging.warning("[DynamicRAMCache] PromptExecutor not found.")
@@ -93,14 +89,8 @@ class DynamicRAMCacheControl:
         old_ram_arg = executor.cache_args.get('ram', 0)
         executor.cache_args['ram'] = cleanup_threshold
 
-        if not hasattr(executor, 'caches'):
-            logging.warning("[DynamicRAMCache] PromptExecutor has no 'caches' attribute.")
-            return
-        
-        cache_set = executor.caches
-
-        if not hasattr(cache_set, 'outputs'):
-            logging.warning("[DynamicRAMCache] CacheSet has no 'outputs' attribute.")
+        cache_set = self._get_cache_set(executor)
+        if cache_set is None:
             return
 
         current_cache = cache_set.outputs
@@ -137,6 +127,24 @@ class DynamicRAMCacheControl:
                 cache_set.outputs.poll(cleanup_threshold)
             except Exception:
                 pass
+
+    def _find_executor(self):
+        for obj in gc.get_objects():
+            if obj.__class__.__name__ == 'PromptExecutor':
+                return obj
+        return None
+
+    def _get_cache_set(self, executor):
+        if not hasattr(executor, 'caches'):
+            logging.warning("[DynamicRAMCache] PromptExecutor has no 'caches' attribute.")
+            return None
+        
+        cache_set = executor.caches
+
+        if not hasattr(cache_set, 'outputs'):
+            logging.warning("[DynamicRAMCache] CacheSet has no 'outputs' attribute.")
+            return None
+        return cache_set
 
     def _update_cache_set(self, cache_set, new_cache):
 
@@ -185,3 +193,54 @@ class DynamicRAMCacheControl:
         new_cache.dynprompt = getattr(old_cache, 'dynprompt', None)
         new_cache.cache_key_set = getattr(old_cache, 'cache_key_set', None)
         new_cache.initialized = getattr(old_cache, 'initialized', False)
+
+class RAMCacheExtremeCleanup(DynamicRAMCacheControl):
+    def __init__(self):
+        pass
+
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "purge_threshold": ("FLOAT", {"default": 256.0, "min": 0.1, "max": 256.0, "step": 0.1, "tooltip": "Minimum free RAM to maintain (GB)"}),
+            },
+            "optional": {
+                "any_input": (any_type, {}),
+            }
+        }
+
+    RETURN_TYPES = (any_type,)
+    RETURN_NAMES = ("output_passthrough",)
+    FUNCTION = "extreme_cleanup"
+    CATEGORY = "utils/dynamic_ramcache"
+
+    def extreme_cleanup(self, purge_threshold, any_input=None):
+        if caching is not None and execution is not None:
+            executor = self._find_executor()
+            if executor is None:
+                logging.warning("[DynamicRAMCache] PromptExecutor not found.")
+            else:
+                if not hasattr(executor, 'cache_args'):
+                    executor.cache_args = {}
+                old_ram_arg = executor.cache_args.get('ram', 2.0)
+                cache_set = self._get_cache_set(executor)
+                if cache_set is not None:
+                    RAMPressureCacheClass = getattr(caching, 'RAMPressureCache', None)
+                    if RAMPressureCacheClass:
+                        is_currently_ram = isinstance(cache_set.outputs, RAMPressureCacheClass)
+                        old_mode = "RAM_PRESSURE (Auto Purge)" if is_currently_ram else "CLASSIC (No Eviction)"
+                    else:
+                        old_mode = "CLASSIC (No Eviction)"
+                    self._execute_cache_logic("RAM_PRESSURE (Auto Purge)", purge_threshold)
+                    self._execute_cache_logic(old_mode, old_ram_arg)
+        else:
+            logging.warning("[DynamicRAMCache] Plugin disabled: Missing internal modules.")
+
+        if any_input is not None:
+            return (any_input,)
+        else:
+            try:
+                from comfy_execution.graph import ExecutionBlocker
+                return (ExecutionBlocker(None),)
+            except ImportError:
+                return (None,)
