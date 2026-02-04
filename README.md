@@ -11,7 +11,7 @@ A custom node for ComfyUI that dynamically manages RAM usage by intelligently co
   - RAM_PRESSURE (Auto Purge): Smart cache purging when system memory falls below the threshold
 - **RAM Cache Extreme Cleanup (🧹)**: Performs a one-time aggressive purge and automatically restores the previous mode and threshold.
 - **Configurable Memory Threshold**: Fine-tune the minimum amount of free RAM to maintain
-- **Seamless Cache Migration**: Preserves aerospace cache data when switching between modes
+- **Seamless Cache Migration**: Preserves essential cache data when switching between modes
 - **Real-time Memory Monitoring**: Continuously checks system RAM and virtual memory availability
 
 ## Installation
