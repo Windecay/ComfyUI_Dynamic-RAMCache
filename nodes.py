@@ -188,8 +188,13 @@ class DynamicRAMCacheControl:
 
     def _migrate_cache_data(self, old_cache, new_cache):
         """迁移缓存核心数据"""
-        new_cache.cache = old_cache.cache
-        new_cache.subcaches = old_cache.subcaches
+        # Fix for 'NullCache' object has no attribute 'cache'
+        if hasattr(old_cache, 'cache'):
+            new_cache.cache = old_cache.cache
+        
+        if hasattr(old_cache, 'subcaches'):
+            new_cache.subcaches = old_cache.subcaches
+            
         new_cache.dynprompt = getattr(old_cache, 'dynprompt', None)
         new_cache.cache_key_set = getattr(old_cache, 'cache_key_set', None)
         new_cache.initialized = getattr(old_cache, 'initialized', False)
