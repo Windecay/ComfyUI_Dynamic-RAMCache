@@ -179,15 +179,22 @@ class DynamicRAMCacheControl:
         if isinstance(cache_args, dict) and 'ram_inactive' in cache_args:
             return True
 
-        PromptExecutor = getattr(execution, 'PromptExecutor', None)
-        execute_async = getattr(PromptExecutor, 'execute_async', None)
-        if execute_async is None:
-            return False
+        return any(source is not None and 'ram_inactive' in source
+                   for source in self._executor_async_sources())
 
-        try:
-            return 'ram_inactive' in inspect.getsource(execute_async)
-        except (OSError, TypeError):
-            return False
+    def _executor_async_sources(self):
+        PromptExecutor = getattr(execution, 'PromptExecutor', None)
+        sources = []
+        # Newer executors keep cleanup in execute_async and execution in _execute_async.
+        for name in ('execute_async', '_execute_async'):
+            method = getattr(PromptExecutor, name, None)
+            if method is None:
+                continue
+            try:
+                sources.append(inspect.getsource(inspect.unwrap(method)))
+            except (OSError, TypeError, ValueError):
+                sources.append(None)
+        return sources
 
     def _can_set_executor_ram_type(self, executor):
         if self._is_executor_ram_type(executor):
@@ -206,17 +213,12 @@ class DynamicRAMCacheControl:
         return ram_type is not None and getattr(executor, 'cache_type', None) == ram_type
 
     def _uses_prompt_local_ram_release_callback(self):
-        PromptExecutor = getattr(execution, 'PromptExecutor', None)
-        execute_async = getattr(PromptExecutor, 'execute_async', None)
-        if execute_async is None:
-            return True
-
-        try:
-            source = inspect.getsource(execute_async)
-        except (OSError, TypeError):
-            return True
-
-        return 'ram_release_callback' in source and 'self.cache_type == CacheType.RAM_PRESSURE' in source
+        sources = self._executor_async_sources()
+        # Unknown implementations must not enable a callback captured as None.
+        return not sources or any(
+            source is None or 'ram_release_callback' in source
+            for source in sources
+        )
 
     def _set_executor_cache_type(self, executor, target_mode_ram):
         CacheType = getattr(execution, 'CacheType', None)

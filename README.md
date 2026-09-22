@@ -88,6 +88,7 @@ Some newer ComfyUI builds capture the RAM release callback when a prompt starts.
 
 To avoid that error, this node detects that executor behavior:
 
+- Detection covers both `execute_async()` and the newer `_execute_async()` implementation. If source inspection is unavailable, mode switching remains restricted for safety.
 - Newer ComfyUI builds usually start in RAM_PRESSURE/RAM cache mode. The node keeps that state, updates thresholds, and preserves per-node automatic cache release
 - If the executor starts in CLASSIC, the node enables the RAMPressureCache object, migrates cache data, and performs an active purge, but keeps the executor mode unchanged for the current prompt
 - If a workflow requests CLASSIC, the node keeps RAM_PRESSURE active on newer prompt-local callback builds to avoid making later prompts start from CLASSIC

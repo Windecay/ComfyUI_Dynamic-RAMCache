@@ -82,6 +82,7 @@
 
 为避免这个错误，节点会检测这种执行器实现：
 
+- 同时检查 `execute_async()` 和新版的 `_execute_async()`；无法读取实现时，仍限制执行中切换模式，避免调用任务开始时为空的回调。
 - 新版ComfyUI通常已经以RAM_PRESSURE/RAM cache模式开始，节点会保持这个状态，更新阈值，并保留每个节点执行后的自动清理行为
 - 如果执行器以CLASSIC开始，节点会启用RAMPressureCache对象、迁移缓存并执行一次主动清理，但不会在当前prompt内改执行器模式
 - 如果工作流请求CLASSIC，节点会在新版prompt-local回调实现中保留RAM_PRESSURE，避免把下一次prompt带入CLASSIC状态
